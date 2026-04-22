@@ -1,0 +1,20 @@
+.b2b-quote-shortcode-wrapper {
+	max-width: 100%;
+	margin: 0 auto;
+}
+.b2b-quote-cart-table th {
+	background-color: #f7f7f7;
+}
+.b2b-quote-cart-table td.product-thumbnail img {
+	max-width: 80px;
+	height: auto;
+}
+.b2b-quote-form-container {
+	margin-top: 40px;
+	padding: 20px;
+	border: 1px solid #e1e1e1;
+	background: #fafafa;
+}
+.b2b-quote-form-container h3 {
+	margin-top: 0;
+}
