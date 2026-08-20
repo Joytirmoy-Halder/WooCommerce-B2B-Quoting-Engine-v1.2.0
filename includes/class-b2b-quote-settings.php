@@ -4,8 +4,9 @@
  *
  * Uses native WooCommerce settings sections and the documented
  * WC_Admin_Settings API. 1.2.0 rendered every field on one screen and then used
- * JavaScript to hide each `h2` in `#mainform` and rebuild fake tabs, which broke
- * whenever another plugin added a heading and relied on a hardcoded tab index.
+ * JavaScript to hide each `h2` inside `#mainform` and rebuild fake tabs, which
+ * broke as soon as another plugin added a heading and relied on a hardcoded
+ * tab index.
  *
  * @package WooB2BQuotingEngine
  */
@@ -19,12 +20,13 @@ class B2B_Quote_Settings {
 
 	const TAB_ID = 'b2b_quoting';
 
-	const DEFAULT_PRIMARY    = '#007cba';
-	const DEFAULT_SECONDARY  = '#005a8c';
-	const DEFAULT_TEXT       = '#ffffff';
-	const DEFAULT_PADDING    = '10px 20px';
-	const DEFAULT_SOCIAL_BG  = '#f0f0f0';
-	const DEFAULT_SOCIAL_TXT = '#333333';
+	const DEFAULT_PRIMARY         = '#007cba';
+	const DEFAULT_SECONDARY       = '#005a8c';
+	const DEFAULT_TEXT            = '#ffffff';
+	const DEFAULT_PADDING         = '10px 20px';
+	const DEFAULT_SOCIAL_BG       = '#f0f0f0';
+	const DEFAULT_SOCIAL_BG_HOVER = '#e0e0e0';
+	const DEFAULT_SOCIAL_TEXT     = '#333333';
 
 	/**
 	 * Register hooks.
@@ -51,7 +53,7 @@ class B2B_Quote_Settings {
 	}
 
 	/**
-	 * Sections within the tab.
+	 * Sections inside the tab.
 	 *
 	 * @return array
 	 */
@@ -87,7 +89,7 @@ class B2B_Quote_Settings {
 			printf(
 				'<li><a href="%1$s" class="%2$s">%3$s</a>%4$s</li>',
 				esc_url( $url ),
-				$current_section === $id ? 'current' : '',
+				esc_attr( (string) $current_section === (string) $id ? 'current' : '' ),
 				esc_html( $label ),
 				$last_key === $id ? '' : ' | '
 			);
@@ -97,59 +99,45 @@ class B2B_Quote_Settings {
 	}
 
 	/**
-	 * Render the fields for the active section.
+	 * Render fields for the active section.
 	 */
 	public function output_settings() {
 		global $current_section;
 
-		WC_Admin_Settings::output_fields( $this->get_settings( $current_section ) );
+		WC_Admin_Settings::output_fields( $this->get_settings( (string) $current_section ) );
 	}
 
 	/**
-	 * Save the fields for the active section.
+	 * Save fields for the active section.
 	 */
 	public function save_settings() {
 		global $current_section;
 
-		WC_Admin_Settings::save_fields( $this->get_settings( $current_section ) );
+		WC_Admin_Settings::save_fields( $this->get_settings( (string) $current_section ) );
 
 		$this->sanitize_stored_options();
 	}
 
 	/**
-	 * Currently selected product IDs mapped to labels, for the search field.
+	 * Field definitions per section.
 	 *
+	 * @param string $section Section ID.
 	 * @return array
 	 */
-	private function get_selected_product_options() {
-		$options = array();
-		$stored  = get_option( 'b2b_quote_products', array() );
-
-		if ( is_string( $stored ) ) {
-			$stored = explode( ',', $stored );
+	public function get_settings( $section = '' ) {
+		if ( 'design' === $section ) {
+			$settings = $this->get_design_settings();
+		} elseif ( 'messaging' === $section ) {
+			$settings = $this->get_messaging_settings();
+		} else {
+			$settings = $this->get_general_settings();
 		}
 
-		foreach ( (array) $stored as $product_id ) {
-			$product_id = absint( $product_id );
-
-			if ( ! $product_id ) {
-				continue;
-			}
-
-			$product = wc_get_product( $product_id );
-
-			if ( ! $product instanceof WC_Product ) {
-				continue;
-			}
-
-			$options[ $product_id ] = wp_strip_all_tags( $product->get_formatted_name() );
-		}
-
-		return $options;
+		return (array) apply_filters( 'b2b_quote_settings_fields', $settings, $section );
 	}
 
 	/**
-	 * Product category options.
+	 * Product category options for the targeting field.
 	 *
 	 * @return array
 	 */
@@ -175,43 +163,43 @@ class B2B_Quote_Settings {
 	}
 
 	/**
-	 * Field definitions per section.
+	 * Currently selected products, so the AJAX search field can preselect them.
 	 *
-	 * @param string $section Current section ID.
 	 * @return array
 	 */
-	public function get_settings( $section = '' ) {
-		switch ( $section ) {
-			case 'design':
-				$settings = $this->get_design_settings();
-				break;
+	private function get_selected_product_options() {
+		$options = array();
+		$stored  = get_option( 'b2b_quote_products', array() );
 
-			case 'messaging':
-				$settings = $this->get_messaging_settings();
-				break;
-
-			default:
-				$settings = $this->get_general_settings();
-				break;
+		if ( is_string( $stored ) ) {
+			$stored = explode( ',', $stored );
 		}
 
-		return (array) apply_filters( 'b2b_quote_settings_fields', $settings, $section );
+		foreach ( (array) $stored as $product_id ) {
+			$product_id = absint( $product_id );
+			$product    = $product_id ? wc_get_product( $product_id ) : false;
+
+			if ( $product instanceof WC_Product ) {
+				$options[ $product_id ] = wp_strip_all_tags( $product->get_formatted_name() );
+			}
+		}
+
+		return $options;
 	}
 
 	/**
-	 * General section fields.
+	 * General section.
 	 *
 	 * @return array
 	 */
 	private function get_general_settings() {
-		$quote_page_id = absint( get_option( 'b2b_quote_page_id' ) );
-		$page_note     = '';
+		$page_id = absint( get_option( 'b2b_quote_page_id' ) );
 
-		if ( $quote_page_id && get_post( $quote_page_id ) ) {
+		if ( $page_id && get_post( $page_id ) ) {
 			$page_note = sprintf(
 				/* translators: %s: link to the quote cart page. */
 				__( 'Quote requests are collected on %s. Add the [b2b_quote_cart] shortcode to any page to move it.', 'woo-b2b-quote' ),
-				'<a href="' . esc_url( (string) get_edit_post_link( $quote_page_id ) ) . '">' . esc_html( (string) get_the_title( $quote_page_id ) ) . '</a>'
+				'<a href="' . esc_url( (string) get_edit_post_link( $page_id ) ) . '">' . esc_html( (string) get_the_title( $page_id ) ) . '</a>'
 			);
 		} else {
 			$page_note = __( 'No quote cart page was found. Create a page containing the [b2b_quote_cart] shortcode.', 'woo-b2b-quote' );
@@ -225,11 +213,11 @@ class B2B_Quote_Settings {
 				'id'    => 'b2b_quote_general_section',
 			),
 			array(
-				'title'   => __( 'Enable for all products', 'woo-b2b-quote' ),
-				'desc'    => __( 'Replace add-to-cart with a quote request across the whole catalogue', 'woo-b2b-quote' ),
-				'id'      => 'b2b_quote_master_switch',
-				'type'    => 'checkbox',
-				'default' => 'no',
+				'title'    => __( 'Enable for all products', 'woo-b2b-quote' ),
+				'desc'     => __( 'Replace add-to-cart with a quote request across the whole catalogue', 'woo-b2b-quote' ),
+				'id'       => 'b2b_quote_master_switch',
+				'type'     => 'checkbox',
+				'default'  => 'no',
 				'desc_tip' => __( 'When enabled, the category and product targeting below is ignored.', 'woo-b2b-quote' ),
 			),
 			array(
@@ -239,7 +227,7 @@ class B2B_Quote_Settings {
 				'class'    => 'wc-enhanced-select',
 				'css'      => 'min-width: 350px;',
 				'options'  => $this->get_category_options(),
-				'desc_tip' => __( 'Child categories are matched automatically, so selecting a parent covers everything beneath it.', 'woo-b2b-quote' ),
+				'desc_tip' => __( 'Child categories match automatically, so selecting a parent covers everything beneath it.', 'woo-b2b-quote' ),
 			),
 			array(
 				'title'             => __( 'Quoteable products', 'woo-b2b-quote' ),
@@ -250,16 +238,16 @@ class B2B_Quote_Settings {
 				'options'           => $this->get_selected_product_options(),
 				'desc_tip'          => __( 'Selecting a variable product also covers all of its variations.', 'woo-b2b-quote' ),
 				'custom_attributes' => array(
-					'data-placeholder' => __( 'Search for a product…', 'woo-b2b-quote' ),
+					'data-placeholder' => __( 'Search for a product', 'woo-b2b-quote' ),
 					'data-action'      => 'woocommerce_json_search_products_and_variations',
 				),
 			),
 			array(
-				'title'    => __( 'Button label', 'woo-b2b-quote' ),
-				'id'       => 'b2b_quote_btn_text',
-				'type'     => 'text',
-				'default'  => __( 'Add to Quote Request', 'woo-b2b-quote' ),
-				'css'      => 'min-width: 350px;',
+				'title'   => __( 'Button label', 'woo-b2b-quote' ),
+				'id'      => 'b2b_quote_btn_text',
+				'type'    => 'text',
+				'default' => __( 'Add to Quote Request', 'woo-b2b-quote' ),
+				'css'     => 'min-width: 350px;',
 			),
 			array(
 				'title'    => __( 'Notification email', 'woo-b2b-quote' ),
@@ -300,7 +288,7 @@ class B2B_Quote_Settings {
 	}
 
 	/**
-	 * Design section fields.
+	 * Design section.
 	 *
 	 * @return array
 	 */
@@ -309,13 +297,13 @@ class B2B_Quote_Settings {
 			array(
 				'title' => __( 'Button design', 'woo-b2b-quote' ),
 				'type'  => 'title',
-				'desc'  => __( 'These values are emitted as CSS custom properties, so your theme can override them.', 'woo-b2b-quote' ),
+				'desc'  => __( 'These values are published as CSS custom properties so your theme can override them.', 'woo-b2b-quote' ),
 				'id'    => 'b2b_quote_design_section',
 			),
 			array(
-				'type' => 'b2b_quote_preview',
-				'id'   => 'b2b_quote_preview',
 				'title' => __( 'Live preview', 'woo-b2b-quote' ),
+				'type'  => 'b2b_quote_preview',
+				'id'    => 'b2b_quote_preview',
 			),
 			array(
 				'title'   => __( 'Background', 'woo-b2b-quote' ),
@@ -374,7 +362,7 @@ class B2B_Quote_Settings {
 				'id'       => 'b2b_quote_padding',
 				'type'     => 'text',
 				'default'  => self::DEFAULT_PADDING,
-				'desc_tip' => __( 'Up to four CSS length values, for example “10px 20px”. Invalid values fall back to the default.', 'woo-b2b-quote' ),
+				'desc_tip' => __( 'Up to four CSS length values, for example 10px 20px. Invalid values fall back to the default.', 'woo-b2b-quote' ),
 			),
 			array(
 				'title'             => __( 'Font size (px)', 'woo-b2b-quote' ),
@@ -408,7 +396,7 @@ class B2B_Quote_Settings {
 	}
 
 	/**
-	 * Messaging section fields.
+	 * Messaging section.
 	 *
 	 * @return array
 	 */
@@ -428,7 +416,7 @@ class B2B_Quote_Settings {
 			}
 
 			$settings[] = array(
-				'title'   => $platform['label'],
+				'title'   => isset( $platform['label'] ) ? $platform['label'] : $platform['option'],
 				'id'      => $platform['option'],
 				'type'    => 'text',
 				'default' => '',
@@ -447,14 +435,14 @@ class B2B_Quote_Settings {
 			'title'   => __( 'Button background on hover', 'woo-b2b-quote' ),
 			'id'      => 'b2b_quote_social_bg_color_hover',
 			'type'    => 'color',
-			'default' => '#e0e0e0',
+			'default' => self::DEFAULT_SOCIAL_BG_HOVER,
 		);
 
 		$settings[] = array(
 			'title'   => __( 'Button text colour', 'woo-b2b-quote' ),
 			'id'      => 'b2b_quote_social_text_color',
 			'type'    => 'color',
-			'default' => self::DEFAULT_SOCIAL_TXT,
+			'default' => self::DEFAULT_SOCIAL_TEXT,
 		);
 
 		$settings[] = array(
@@ -466,11 +454,200 @@ class B2B_Quote_Settings {
 	}
 
 	/**
-	 * Custom field type: the live button preview.
+	 * Custom field type rendering the live button preview.
 	 *
 	 * @param array $field Field definition.
 	 */
 	public function render_preview_field( $field ) {
+		$title = isset( $field['title'] ) ? $field['title'] : '';
 		?>
 		<tr valign="top">
-			<th scope="row" class="titledesc"><?php echo esc_html( isset( $field['title'
+			<th scope="row" class="titledesc"><?php echo esc_html( $title ); ?></th>
+			<td class="forminp">
+				<div id="b2b-live-preview-box" class="b2b-live-preview">
+					<button type="button" id="b2b_preview_btn" class="b2b-preview-btn"><?php echo esc_html( B2B_Quote_Frontend::get_button_text() ); ?></button>
+				</div>
+				<p class="description"><?php esc_html_e( 'Updates as you change the values below. Remember to save.', 'woo-b2b-quote' ); ?></p>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * Load admin assets on our settings tab only.
+	 *
+	 * @param string $hook_suffix Current admin screen.
+	 */
+	public function enqueue_admin_assets( $hook_suffix ) {
+		if ( 'woocommerce_page_wc-settings' !== $hook_suffix ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only screen check.
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+
+		if ( self::TAB_ID !== $tab ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'b2b-quote-settings',
+			B2B_QUOTE_PLUGIN_URL . 'assets/css/b2b-quote-settings.css',
+			array(),
+			B2B_QUOTE_VERSION
+		);
+
+		wp_enqueue_script(
+			'b2b-quote-settings',
+			B2B_QUOTE_PLUGIN_URL . 'assets/js/b2b-quote-settings.js',
+			array( 'jquery' ),
+			B2B_QUOTE_VERSION,
+			true
+		);
+	}
+
+	/**
+	 * Re-sanitise stored values after WooCommerce has saved them.
+	 */
+	private function sanitize_stored_options() {
+		$colors = array(
+			'b2b_quote_color_primary'          => self::DEFAULT_PRIMARY,
+			'b2b_quote_color_secondary'        => self::DEFAULT_SECONDARY,
+			'b2b_quote_text_color'             => self::DEFAULT_TEXT,
+			'b2b_quote_text_color_hover'       => self::DEFAULT_TEXT,
+			'b2b_quote_border_color'           => self::DEFAULT_SECONDARY,
+			'b2b_quote_social_bg_color'        => self::DEFAULT_SOCIAL_BG,
+			'b2b_quote_social_bg_color_hover'  => self::DEFAULT_SOCIAL_BG_HOVER,
+			'b2b_quote_social_text_color'      => self::DEFAULT_SOCIAL_TEXT,
+		);
+
+		foreach ( $colors as $option => $fallback ) {
+			$stored = get_option( $option );
+
+			if ( null === $stored || false === $stored ) {
+				continue;
+			}
+
+			update_option( $option, self::sanitize_color( $stored, $fallback ) );
+		}
+
+		$integers = array(
+			'b2b_quote_border_width'  => 0,
+			'b2b_quote_border_radius' => 4,
+			'b2b_quote_font_size'     => 16,
+			'b2b_quote_font_weight'   => 700,
+		);
+
+		foreach ( $integers as $option => $fallback ) {
+			$stored = get_option( $option );
+
+			if ( null === $stored || false === $stored ) {
+				continue;
+			}
+
+			update_option( $option, (string) ( is_numeric( $stored ) ? absint( $stored ) : $fallback ) );
+		}
+
+		$padding = get_option( 'b2b_quote_padding' );
+
+		if ( false !== $padding && null !== $padding ) {
+			update_option( 'b2b_quote_padding', self::sanitize_css_padding( $padding, self::DEFAULT_PADDING ) );
+		}
+	}
+
+	/**
+	 * Validate a hex colour.
+	 *
+	 * @param mixed  $value    Raw value.
+	 * @param string $fallback Fallback colour.
+	 * @return string
+	 */
+	public static function sanitize_color( $value, $fallback ) {
+		$color = sanitize_hex_color( is_string( $value ) ? trim( $value ) : '' );
+
+		return $color ? $color : $fallback;
+	}
+
+	/**
+	 * Validate a CSS shorthand padding value.
+	 *
+	 * The 1.2.0 settings screen interpolated this free-text field straight into a
+	 * <style> block, which allowed arbitrary CSS (and a closing </style> tag) to
+	 * be injected into every page of the storefront.
+	 *
+	 * @param mixed  $value    Raw value.
+	 * @param string $fallback Fallback value.
+	 * @return string
+	 */
+	public static function sanitize_css_padding( $value, $fallback ) {
+		$value = is_string( $value ) ? trim( preg_replace( '/\s+/', ' ', $value ) ) : '';
+
+		if ( '' === $value ) {
+			return $fallback;
+		}
+
+		if ( ! preg_match( '/^(?:\d{1,3}(?:\.\d{1,2})?(?:px|em|rem|%)?)(?: \d{1,3}(?:\.\d{1,2})?(?:px|em|rem|%)?){0,3}$/', $value ) ) {
+			return $fallback;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Read an integer option and return it as a pixel value.
+	 *
+	 * @param string $option   Option name.
+	 * @param int    $fallback Fallback value.
+	 * @return string
+	 */
+	private static function get_px( $option, $fallback ) {
+		$value = get_option( $option, $fallback );
+
+		return absint( is_numeric( $value ) ? $value : $fallback ) . 'px';
+	}
+
+	/**
+	 * Read and validate a colour option.
+	 *
+	 * @param string $option   Option name.
+	 * @param string $fallback Fallback colour.
+	 * @return string
+	 */
+	private static function get_color( $option, $fallback ) {
+		return self::sanitize_color( get_option( $option, $fallback ), $fallback );
+	}
+
+	/**
+	 * Build the CSS custom properties for the storefront.
+	 *
+	 * Every value is validated first, so nothing user-supplied can break out of
+	 * the declaration block.
+	 *
+	 * @return string
+	 */
+	public static function get_frontend_inline_css() {
+		$variables = array(
+			'--b2b-quote-primary'          => self::get_color( 'b2b_quote_color_primary', self::DEFAULT_PRIMARY ),
+			'--b2b-quote-secondary'        => self::get_color( 'b2b_quote_color_secondary', self::DEFAULT_SECONDARY ),
+			'--b2b-quote-text-color'       => self::get_color( 'b2b_quote_text_color', self::DEFAULT_TEXT ),
+			'--b2b-quote-text-color-hover' => self::get_color( 'b2b_quote_text_color_hover', self::DEFAULT_TEXT ),
+			'--b2b-quote-border-color'     => self::get_color( 'b2b_quote_border_color', self::DEFAULT_SECONDARY ),
+			'--b2b-quote-border-width'     => self::get_px( 'b2b_quote_border_width', 0 ),
+			'--b2b-quote-border-radius'    => self::get_px( 'b2b_quote_border_radius', 4 ),
+			'--b2b-quote-font-size'        => self::get_px( 'b2b_quote_font_size', 16 ),
+			'--b2b-quote-font-weight'      => (string) absint( get_option( 'b2b_quote_font_weight', 700 ) ),
+			'--b2b-quote-padding'          => self::sanitize_css_padding( get_option( 'b2b_quote_padding', self::DEFAULT_PADDING ), self::DEFAULT_PADDING ),
+			'--b2b-social-bg'              => self::get_color( 'b2b_quote_social_bg_color', self::DEFAULT_SOCIAL_BG ),
+			'--b2b-social-bg-hover'        => self::get_color( 'b2b_quote_social_bg_color_hover', self::DEFAULT_SOCIAL_BG_HOVER ),
+			'--b2b-social-text'            => self::get_color( 'b2b_quote_social_text_color', self::DEFAULT_SOCIAL_TEXT ),
+		);
+
+		$declarations = '';
+
+		foreach ( $variables as $name => $value ) {
+			$declarations .= $name . ':' . $value . ';';
+		}
+
+		return ':root{' . $declarations . '}';
+	}
+}
