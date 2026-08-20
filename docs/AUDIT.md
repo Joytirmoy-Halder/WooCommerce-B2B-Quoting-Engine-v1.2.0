@@ -421,8 +421,17 @@ responsive quote cart, a dialog, and `prefers-reduced-motion` and print rules.
 
 ## Verification
 
-No automated test suite exists yet, so this pass was verified by reading and by
-the following manual plan. `php -l` passes on every file across PHP 7.4 to 8.3.
+**This pass was verified by reading the code, not by executing it.** No
+automated test suite exists yet, and nothing in this branch has been run against
+a live WordPress installation.
+
+The CI workflow added here runs `php -l` across PHP 7.4 to 8.3 and PHPCS against
+the WordPress Coding Standards on every push, so syntax and standards results
+appear on the pull request rather than being asserted in this document. Let those
+checks complete before merging.
+
+The following manual plan should be worked through against a staging site before
+release. Steps 1, 5 and 6 cover the defects that made the plugin unusable.
 
 1. **Install.** Activate on a strict MySQL configuration and confirm the table is
    created with all 12 columns. This alone was impossible in 1.2.0 (C4).
