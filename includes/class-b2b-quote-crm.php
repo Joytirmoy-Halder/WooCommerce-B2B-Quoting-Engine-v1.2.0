@@ -12,10 +12,10 @@ defined( 'ABSPATH' ) || exit;
  */
 class B2B_Quote_CRM {
 
-	const MENU_SLUG   = 'b2b-quotes-crm';
-	const CAPABILITY  = 'manage_woocommerce';
+	const MENU_SLUG    = 'b2b-quotes-crm';
+	const CAPABILITY   = 'manage_woocommerce';
 	const NONCE_ACTION = 'b2b_quote_update_nonce';
-	const PER_PAGE    = 20;
+	const PER_PAGE     = 20;
 
 	/**
 	 * Register hooks.
@@ -63,7 +63,7 @@ class B2B_Quote_CRM {
 	 */
 	public function render_page() {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to view quote requests.', 'woo-b2b-quote' ), 403 );
+			wp_die( esc_html__( 'You do not have permission to view quote requests.', 'woo-b2b-quote' ), '', 403 );
 		}
 
 		$this->render_notice();
@@ -409,20 +409,20 @@ class B2B_Quote_CRM {
 	 */
 	public function handle_quote_update() {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to edit quote requests.', 'woo-b2b-quote' ), 403 );
+			wp_die( esc_html__( 'You do not have permission to edit quote requests.', 'woo-b2b-quote' ), '', 403 );
 		}
 
 		$nonce = isset( $_POST['b2b_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['b2b_nonce'] ) ) : '';
 
 		if ( ! wp_verify_nonce( $nonce, self::NONCE_ACTION ) ) {
-			wp_die( esc_html__( 'Security check failed. Please reload the page and try again.', 'woo-b2b-quote' ), 403 );
+			wp_die( esc_html__( 'Security check failed. Please reload the page and try again.', 'woo-b2b-quote' ), '', 403 );
 		}
 
 		$quote_id = isset( $_POST['quote_id'] ) ? absint( wp_unslash( $_POST['quote_id'] ) ) : 0;
 		$quote    = $quote_id ? B2B_Quote_DB::get_quote( $quote_id ) : null;
 
 		if ( ! $quote ) {
-			wp_die( esc_html__( 'That quote request no longer exists.', 'woo-b2b-quote' ), 404 );
+			wp_die( esc_html__( 'That quote request no longer exists.', 'woo-b2b-quote' ), '', 404 );
 		}
 
 		$status = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
@@ -435,6 +435,7 @@ class B2B_Quote_CRM {
 
 		$items = B2B_Quote_DB::decode_items( $quote );
 
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Every element passes through sanitize_text_field() or absint() via array_map().
 		$posted_prices = ( isset( $_POST['negotiated_prices'] ) && is_array( $_POST['negotiated_prices'] ) )
 			? array_map( 'sanitize_text_field', wp_unslash( $_POST['negotiated_prices'] ) )
 			: array();
@@ -442,6 +443,7 @@ class B2B_Quote_CRM {
 		$posted_quantities = ( isset( $_POST['quantities'] ) && is_array( $_POST['quantities'] ) )
 			? array_map( 'absint', wp_unslash( $_POST['quantities'] ) )
 			: array();
+		// phpcs:enable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 		foreach ( $items as $product_id => $item ) {
 			if ( isset( $posted_quantities[ $product_id ] ) ) {
