@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -54,7 +54,7 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -85,12 +85,12 @@ jobs:
           {
             echo '#### Coding standards job output'
             echo
-            echo '\\<details>\\<summary>composer install\\</summary>'
+            echo '<details><summary>composer install</summary>'
             echo
             echo '```'
             cat /tmp/b2b-install.log 2>/dev/null || echo '(install step did not run)'
             echo '```'
-            echo '\\</details>'
+            echo '</details>'
             echo
             echo '**phpcs:**'
             echo
@@ -111,11 +111,11 @@ jobs:
 
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Version numbers agree
         run: |
-          header=$(grep -m1 '^ \\* Version:' woo-b2b-quoting-engine.php | tr -d ' ' | cut -d: -f2)
+          header=$(grep -m1 '^ \* Version:' woo-b2b-quoting-engine.php | tr -d ' ' | cut -d: -f2)
           constant=$(grep -m1 "B2B_QUOTE_VERSION', '" woo-b2b-quoting-engine.php | cut -d"'" -f4)
           stable=$(grep -m1 '^Stable tag:' readme.txt | tr -d ' ' | cut -d: -f2)
           echo "header=$header constant=$constant readme=$stable"
@@ -124,7 +124,7 @@ jobs:
 
       - name: No build artefacts committed
         run: |
-          if git ls-files | grep -E '\\.(zip|tar\\.gz)$'; then
+          if git ls-files | grep -E '\.(zip|tar\.gz)$'; then
             echo 'Distribution archives must not be committed.' >&2
             exit 1
           fi
