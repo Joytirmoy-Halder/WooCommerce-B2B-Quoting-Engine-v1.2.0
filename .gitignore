@@ -1,0 +1,43 @@
+# Dependencies
+/vendor/
+/node_modules/
+composer.lock
+package-lock.json
+
+# Build artefacts
+#
+# 1.2.0 committed woo-b2b-quoting-engine.zip into the repository. Distribution
+# archives are release assets, not source.
+*.zip
+*.tar.gz
+/build/
+/dist/
+
+# Tooling caches
+.phpcs-cache
+.phpunit.result.cache
+/.phpunit.cache/
+
+# Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# OS noise
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Local overrides and secrets
+.env
+.env.*
+!.env.example
+*.log
+
+# Compiled translations are generated from the POT file
+/languages/*.mo
