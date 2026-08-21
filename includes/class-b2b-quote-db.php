@@ -79,7 +79,7 @@ class B2B_Quote_DB {
 	 * Run the installer when the stored schema version is behind.
 	 */
 	public static function maybe_upgrade() {
-		if ( (string) get_option( 'b2b_quote_db_version' ) !== (string) B2B_QUOTE_DB_VERSION ) {
+		if ( (string) B2B_QUOTE_DB_VERSION !== (string) get_option( 'b2b_quote_db_version' ) ) {
 			self::install();
 		}
 	}
@@ -371,9 +371,9 @@ class B2B_Quote_DB {
 
 		$sql = "SELECT COUNT(*) FROM {$table_name} {$where}";
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name derives from $wpdb->prefix.
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- Table name derives from $wpdb->prefix; filter values are prepared via build_where().
 		$count = $params ? $wpdb->get_var( $wpdb->prepare( $sql, $params ) ) : $wpdb->get_var( $sql );
-		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
 
 		return (int) $count;
 	}
