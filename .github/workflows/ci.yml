@@ -57,11 +57,17 @@ jobs:
           coverage: none
           tools: composer
 
+      - name: Validate Composer configuration
+        run: composer validate --no-check-lock --no-check-publish
+
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      # Emit findings in GitHub's annotation format as well as the full
+      # report, so every violation shows up inline on the pull request diff
+      # instead of only in the raw log.
       - name: Run PHPCS
-        run: composer run phpcs
+        run: vendor/bin/phpcs --report-full --report-github
 
   package:
     name: Consistency checks
