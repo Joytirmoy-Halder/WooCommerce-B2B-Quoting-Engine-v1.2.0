@@ -1,0 +1,55 @@
+{
+  "name": "joytirmoy-halder/woo-b2b-quoting-engine",
+  "description": "Replace Add to cart with Request a quote, negotiate prices from the WordPress admin, and send customers a one-click approval link into checkout.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "keywords": [
+    "wordpress",
+    "woocommerce",
+    "b2b",
+    "quote",
+    "wholesale"
+  ],
+  "homepage": "https://github.com/Joytirmoy-Halder/WooCommerce-B2B-Quoting-Engine-v1.2.0",
+  "authors": [
+    {
+      "name": "Joytirmoy Halder",
+      "role": "Developer"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/Joytirmoy-Halder/WooCommerce-B2B-Quoting-Engine-v1.2.0/issues",
+    "source": "https://github.com/Joytirmoy-Halder/WooCommerce-B2B-Quoting-Engine-v1.2.0"
+  },
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "wp-coding-standards/wpcs": "^3.1",
+    "phpcompatibility/phpcompatibility-wp": "^2.1"
+  },
+  "scripts": {
+    "lint": "find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 -P4 php -l",
+    "phpcs": "phpcs",
+    "phpcbf": "phpcbf",
+    "make-pot": "wp i18n make-pot . languages/woo-b2b-quote.pot --domain=woo-b2b-quote --exclude=vendor,node_modules",
+    "test": [
+      "@lint",
+      "@phpcs"
+    ]
+  },
+  "scripts-descriptions": {
+    "lint": "Run the PHP syntax checker over every plugin file.",
+    "phpcs": "Check the WordPress Coding Standards.",
+    "phpcbf": "Fix what the coding standards checker can fix automatically.",
+    "make-pot": "Regenerate languages/woo-b2b-quote.pot. Requires WP-CLI."
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "optimize-autoloader": true,
+    "sort-packages": true
+  }
+}

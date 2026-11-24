@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'audit/**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: PHP ${{ matrix.php }} syntax
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every version the plugin header claims to support.
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3']
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: none
+
+      - name: Lint every PHP file
+        run: |
+          find . -type f -name '*.php' -not -path './vendor/*' -print0 \
+            | xargs -0 -n1 -P4 php -l
+
+  standards:
+    name: WordPress Coding Standards
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # Lets the publish step mirror the report into a PR comment, since the
+      # raw job log requires sign-in to view.
+      pull-requests: write
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer
+
+      - name: Install dependencies
+        id: deps
+        continue-on-error: true
+        run: composer install --prefer-dist --no-interaction --no-progress 2>&1 | tee /tmp/b2b-install.log
+
+      # Findings are emitted as GitHub annotations (--report-github) so they
+      # show inline on the pull request diff, alongside the full report.
+      - name: Run PHPCS
+        id: phpcs
+        continue-on-error: true
+        run: vendor/bin/phpcs --report-full --report-github 2>&1 | tee /tmp/b2b-phpcs.log
+
+      - name: Publish the standards report
+        if: github.event_name == 'pull_request' && (steps.deps.outcome == 'failure' || steps.phpcs.outcome == 'failure')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          GH_PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo '#### Coding standards job output'
+            echo
+            echo '<details><summary>composer install</summary>'
+            echo
+            echo '```'
+            cat /tmp/b2b-install.log 2>/dev/null || echo '(install step did not run)'
+            echo '```'
+            echo '</details>'
+            echo
+            echo '**phpcs:**'
+            echo
+            echo '```'
+            head -400 /tmp/b2b-phpcs.log 2>/dev/null || echo '(phpcs step did not run)'
+            echo '```'
+          } > /tmp/b2b-report.md
+          gh pr comment "$GH_PR" --repo "$GH_REPO" --body-file /tmp/b2b-report.md --edit-last \
+            || gh pr comment "$GH_PR" --repo "$GH_REPO" --body-file /tmp/b2b-report.md
+
+      - name: Fail the job when checks failed
+        if: steps.deps.outcome == 'failure' || steps.phpcs.outcome == 'failure'
+        run: exit 1
+
+  package:
+    name: Consistency checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Version numbers agree
+        run: |
+          header=$(grep -m1 '^ \* Version:' woo-b2b-quoting-engine.php | tr -d ' ' | cut -d: -f2)
+          constant=$(grep -m1 "B2B_QUOTE_VERSION', '" woo-b2b-quoting-engine.php | cut -d"'" -f4)
+          stable=$(grep -m1 '^Stable tag:' readme.txt | tr -d ' ' | cut -d: -f2)
+          echo "header=$header constant=$constant readme=$stable"
+          test "$header" = "$constant"
+          test "$header" = "$stable"
+
+      - name: No build artefacts committed
+        run: |
+          if git ls-files | grep -E '\.(zip|tar\.gz)$'; then
+            echo 'Distribution archives must not be committed.' >&2
+            exit 1
+          fi

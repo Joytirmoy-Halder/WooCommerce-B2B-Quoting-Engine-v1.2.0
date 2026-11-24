@@ -1,0 +1,45 @@
+/**
+ * B2B Quoting settings tab styles.
+ *
+ * Loaded only on WooCommerce > Settings > B2B Quoting.
+ */
+
+.b2b-live-preview {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 110px;
+	padding: 24px;
+	background: #f6f7f7 repeating-linear-gradient(
+		45deg,
+		transparent,
+		transparent 10px,
+		rgba(0, 0, 0, 0.02) 10px,
+		rgba(0, 0, 0, 0.02) 20px
+	);
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.b2b-preview-btn {
+	/* Values are overwritten live by assets/js/b2b-quote-settings.js. */
+	background-color: #007cba;
+	color: #fff;
+	border: 0 solid #005a8c;
+	border-radius: 4px;
+	padding: 10px 20px;
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.4;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.b2b-preview-btn:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.woocommerce_page_wc-settings .b2b-live-preview + .description {
+	margin-top: 8px;
+}
